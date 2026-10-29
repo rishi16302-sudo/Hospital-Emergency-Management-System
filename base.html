@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Hospital Emergency Management{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('stylesheet') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon">✚</span>
+      <div>
+        <strong>City General Hospital</strong>
+        <small>Emergency Management System</small>
+      </div>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Dashboard</a>
+      <a href="{{ url_for('patients') }}" class="{{ 'active' if request.endpoint == 'patients' }}">Patient Records</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    Emergency hotline: <strong>108</strong> &middot; Demo system, do not use for real clinical decisions.
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

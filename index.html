@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Hospital Emergency Management{% endblock %}
+
+{% block content %}
+<h1>Emergency Dashboard</h1>
+
+<section class="stats" id="stats">
+  <div class="stat"><span class="num" data-k="waiting">{{ stats.waiting }}</span><span>Waiting</span></div>
+  <div class="stat"><span class="num" data-k="in_treatment">{{ stats.in_treatment }}</span><span>In Treatment</span></div>
+  <div class="stat danger"><span class="num" data-k="critical">{{ stats.critical }}</span><span>Critical (Level 1-2)</span></div>
+  <div class="stat ok"><span class="num"><span data-k="free_beds">{{ stats.free_beds }}</span>/{{ stats.total_beds }}</span><span>Beds Free</span></div>
+  <div class="stat"><span class="num" data-k="today">{{ stats.today }}</span><span>Arrivals Today</span></div>
+</section>
+
+<div class="grid">
+  <section class="card">
+    <h2>Register Emergency Patient</h2>
+    <form method="post" action="{{ url_for('register') }}" class="form">
+      <label>Full name
+        <input type="text" name="name" required maxlength="80">
+      </label>
+      <div class="row">
+        <label>Age
+          <input type="number" name="age" min="0" max="120" required>
+        </label>
+        <label>Gender
+          <select name="gender">
+            <option>Male</option><option>Female</option><option>Other</option>
+          </select>
+        </label>
+      </div>
+      <label>Chief complaint
+        <input type="text" name="complaint" required maxlength="200" placeholder="e.g. Severe chest pain">
+      </label>
+      <label>Triage level
+        <select name="triage" required>
+          {% for lvl, label in TRIAGE_LEVELS.items() %}
+          <option value="{{ lvl }}" {{ 'selected' if lvl == 3 }}>{{ lvl }} - {{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Notes
+        <textarea name="notes" rows="2" placeholder="Allergies, vitals, history..."></textarea>
+      </label>
+      <button type="submit" class="btn primary">Register patient</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Bed Board</h2>
+    <div class="beds">
+      {% for b in beds %}
+      <div class="bed {{ 'occupied' if b.patient_id else 'free' }}" title="{{ b.type }} bed">
+        <strong>{{ b.label }}</strong>
+        <small>{{ b.patient_name if b.patient_id else 'Available' }}</small>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Active Queue <small>(sorted by urgency, then waiting time)</small></h2>
+  {% if queue %}
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Triage</th><th>Patient</th><th>Complaint</th><th>Time</th><th>Status</th><th>Bed</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for p in queue %}
+      <tr>
+        <td><span class="badge t{{ p.triage }}">{{ p.triage }} · {{ TRIAGE_LEVELS[p.triage] }}</span></td>
+        <td><strong>{{ p.name }}</strong><br><small>{{ p.age }} yrs, {{ p.gender }}</small></td>
+        <td>{{ p.complaint }}</td>
+        <td>{{ p.minutes_since_arrival }} min</td>
+        <td><span class="status s-{{ p.status|replace(' ', '') }}">{{ p.status }}</span></td>
+        <td>{{ p.bed_label or '—' }}</td>
+        <td class="actions">
+          {% if p.status == 'Waiting' %}
+          <form method="post" action="{{ url_for('assign', pid=p.id) }}" class="inline">
+            <select name="bed_id" required>
+              <option value="">Assign bed…</option>
+              {% for b in free_beds %}<option value="{{ b.id }}">{{ b.label }} ({{ b.type }})</option>{% endfor %}
+            </select>
+            <button class="btn small primary">Assign</button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('change_status', pid=p.id) }}" class="inline">
+            <input type="hidden" name="status" value="Admitted">
+            <button class="btn small">Admit</button>
+          </form>
+          <form method="post" action="{{ url_for('change_status', pid=p.id) }}" class="inline">
+            <input type="hidden" name="status" value="Discharged">
+            <button class="btn small ok">Discharge</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty">No active patients. The emergency department is clear.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Refresh the live counters every 15 seconds without reloading the page
+  setInterval(async () => {
+    try {
+      const s = await (await fetch("{{ url_for('api_stats') }}")).json();
+      document.querySelectorAll("[data-k]").forEach(el => {
+        if (s[el.dataset.k] !== undefined) el.textContent = s[el.dataset.k];
+      });
+    } catch (e) {}
+  }, 15000);
+</script>
+{% endblock %}

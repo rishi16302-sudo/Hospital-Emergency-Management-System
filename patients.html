@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Patient Records · Hospital Emergency Management{% endblock %}
+
+{% block content %}
+<h1>Patient Records</h1>
+
+<section class="card">
+  <form method="get" class="filters">
+    <input type="search" name="q" value="{{ search }}" placeholder="Search by name or complaint…">
+    <select name="status">
+      <option value="">All statuses</option>
+      {% for s in STATUSES %}<option value="{{ s }}" {{ 'selected' if s == status }}>{{ s }}</option>{% endfor %}
+    </select>
+    <button class="btn primary">Filter</button>
+    {% if search or status %}<a class="btn" href="{{ url_for('patients') }}">Clear</a>{% endif %}
+  </form>
+
+  {% if patients %}
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>#</th><th>Patient</th><th>Triage</th><th>Complaint</th><th>Arrived</th><th>Status</th><th>Bed</th><th>Notes</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in patients %}
+      <tr>
+        <td>{{ p.id }}</td>
+        <td><strong>{{ p.name }}</strong><br><small>{{ p.age }} yrs, {{ p.gender }}</small></td>
+        <td><span class="badge t{{ p.triage }}">{{ p.triage }}</span></td>
+        <td>{{ p.complaint }}</td>
+        <td><small>{{ p.arrived_at }}</small></td>
+        <td>
+          <form method="post" action="{{ url_for('change_status', pid=p.id) }}" class="inline">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <select name="status" onchange="this.form.submit()">
+              {% for s in STATUSES %}<option value="{{ s }}" {{ 'selected' if s == p.status }}>{{ s }}</option>{% endfor %}
+            </select>
+          </form>
+        </td>
+        <td>{{ p.bed_label or '—' }}</td>
+        <td>
+          <form method="post" action="{{ url_for('notes', pid=p.id) }}" class="inline">
+            <input type="text" name="notes" value="{{ p.notes or '' }}" placeholder="Add note">
+            <button class="btn small">Save</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('delete', pid=p.id) }}" class="inline"
+                onsubmit="return confirm('Delete this record permanently?');">
+            <button class="btn small danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty">No patient records match your search.</p>
+  {% endif %}
+</section>
+{% endblock %}
